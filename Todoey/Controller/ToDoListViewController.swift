@@ -11,9 +11,8 @@ import UIKit
 class ToDoListViewController: UITableViewController {
     
     var itemArray = [Item]()
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     
-    let defaults = UserDefaults.standard
-
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -30,9 +29,9 @@ class ToDoListViewController: UITableViewController {
         itemArray.append(newItem3)
 
         // This condition ensures there is a plist of persisted items with the key "ToDoListArray" before loading itemsArray on screen
-        if let items = defaults.array(forKey: "ToDoListArray") as? [Item] {
-            itemArray = items
-        }
+//        if let items = defaults.array(forKey: "ToDoListArray") as? [Item] {
+//            itemArray = items
+//        }
         
     }
     
@@ -66,11 +65,11 @@ class ToDoListViewController: UITableViewController {
         // Toggling the item cell's 'done' property on selecting a cell.
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
+        // Call saveItem to encode change made to 'done' property
+        saveItems()
+        
         // To stop cell from staying grey after selecting a cell.
         tableView.deselectRow(at: indexPath, animated: true)
-        
-        // Reloads all table view data after selecting a cell.
-        tableView.reloadData()
         
     }
     
@@ -95,10 +94,10 @@ class ToDoListViewController: UITableViewController {
             
             // Append the new item to the itemArray, and save to UserDefaults plist.
             self.itemArray.append(newItem)
-            self.defaults.set(self.itemArray, forKey: "ToDoListArray")
             
-            // This line reloads the table view to show newly appended item in itemArray.
-            self.tableView.reloadData()
+            // Call saveItem to encode the new item entered for 'title' property.
+            self.saveItems()
+            
         }
         
         alert.addTextField { (alertTextfield) in
@@ -113,6 +112,24 @@ class ToDoListViewController: UITableViewController {
     
 
     
+    //MARK - Model Manipulation Methods
+    
+    func saveItems() {
+        
+        // Encode itemsArray after entering a new item or changing done property.
+        let encoder = PropertyListEncoder()
+        
+        do {
+            let data = try encoder.encode(itemArray)
+            try data.write(to: dataFilePath!)
+        } catch {
+            print("Error encoding itemArray, \(error)")
+        }
+        
+        // This line reloads the table view to show newly appended item in itemArray.
+        self.tableView.reloadData()
+        
+    }
     
 }
 
