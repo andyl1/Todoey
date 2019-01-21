@@ -10,10 +10,17 @@ import UIKit
 
 class ToDoListViewController: UITableViewController {
     
-    var itemArray = ["Complete Todoey", "Build website", "Get eggs", ]
+    var itemArray = ["Complete Todoey", "Build website", "Get eggs"]
+    let defaults = UserDefaults.standard
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // This condition ensures there is a plist of persisted data with key "ToDoListArray" before setting as itemArray to load on screen
+        if let items = defaults.array(forKey: "ToDoListArray") as? [String] {
+            itemArray = items
+        }
+        
     }
     
     
@@ -52,10 +59,17 @@ class ToDoListViewController: UITableViewController {
         var textField = UITextField()
         
         let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
+        
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             // What will happen when the user clicks the Add Item button
-            print(textField.text!)
+            
+            // Append new item to itemArray.
             self.itemArray.append(textField.text!)
+            
+            // This line saves the newly appended itemArray to UserDefaults to persist todo list data.
+            self.defaults.set(self.itemArray, forKey: "ToDoListArray")
+            
+            // This line reloads the table view to show newly appended item in itemArray.
             self.tableView.reloadData()
         }
         
