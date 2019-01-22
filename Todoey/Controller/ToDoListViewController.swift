@@ -16,22 +16,20 @@ class ToDoListViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        let newItem = Item()
-        newItem.title = "Complete Todoey"
-        itemArray.append(newItem)
-        
-        let newItem2 = Item()
-        newItem2.title = "Build website"
-        itemArray.append(newItem2)
-        
-        let newItem3 = Item()
-        newItem3.title = "Buy eggs"
-        itemArray.append(newItem3)
+//        let newItem = Item()
+//        newItem.title = "Complete Todoey"
+//        itemArray.append(newItem)
+//        
+//        let newItem2 = Item()
+//        newItem2.title = "Build website"
+//        itemArray.append(newItem2)
+//        
+//        let newItem3 = Item()
+//        newItem3.title = "Buy eggs"
+//        itemArray.append(newItem3)
 
-        // This condition ensures there is a plist of persisted items with the key "ToDoListArray" before loading itemsArray on screen
-//        if let items = defaults.array(forKey: "ToDoListArray") as? [Item] {
-//            itemArray = items
-//        }
+        // Call loadItems function to decode items saved to plist and display in table view.
+        loadItems()
         
     }
     
@@ -128,6 +126,20 @@ class ToDoListViewController: UITableViewController {
         
         // This line reloads the table view to show newly appended item in itemArray.
         self.tableView.reloadData()
+        
+    }
+    
+    func loadItems() {
+        
+        if let data = try? Data(contentsOf: dataFilePath!) {
+            let decoder = PropertyListDecoder()
+            
+            do {
+                itemArray = try decoder.decode([Item].self, from: data)
+            } catch {
+                print("Error decoding itemArray, \(error)")
+            }
+        }
         
     }
     
