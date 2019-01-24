@@ -7,35 +7,30 @@
 //
 
 import UIKit
+import CoreData
 
 class ToDoListViewController: UITableViewController {
     
+    
     var itemArray = [Item]()
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    var selectedCategory : Category? {
+        didSet {
+            loadItems()
+        }
+    }
+
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-//        let newItem = Item()
-//        newItem.title = "Complete Todoey"
-//        itemArray.append(newItem)
-//        
-//        let newItem2 = Item()
-//        newItem2.title = "Build website"
-//        itemArray.append(newItem2)
-//        
-//        let newItem3 = Item()
-//        newItem3.title = "Buy eggs"
-//        itemArray.append(newItem3)
+                
+        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist"))
 
-        // Call loadItems function to decode items saved to plist and display in table view.
-        loadItems()
-        
     }
     
     
-    
-    //MARK - Create Table View Datasource Methods (required)
+
+    //MARK: - Table View Datasource Methods (required)
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
@@ -51,12 +46,13 @@ class ToDoListViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        
         return itemArray.count
     }
     
     
     
-    //MARK - Create Table View Delegate Methods
+    //MARK: - Table View Delegate Methods
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
@@ -68,12 +64,11 @@ class ToDoListViewController: UITableViewController {
         
         // To stop cell from staying grey after selecting a cell.
         tableView.deselectRow(at: indexPath, animated: true)
-        
     }
     
     
     
-    //MARK - Add New Items
+    //MARK: - Add New Items
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         
@@ -84,18 +79,20 @@ class ToDoListViewController: UITableViewController {
         
         // UIAlertAction setup
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
-            // What will happen when the user clicks the Add Item button
+            
+            // What will happen when the user clicks the 'Add Item' button
             
             // Create new item and set it's title from the text in textField
-            let newItem = Item()
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
+            newItem.parentCategory = self.selectedCategory
             
             // Append the new item to the itemArray, and save to UserDefaults plist.
             self.itemArray.append(newItem)
             
             // Call saveItem to encode the new item entered for 'title' property.
             self.saveItems()
-            
         }
         
         alert.addTextField { (alertTextfield) in
@@ -110,38 +107,69 @@ class ToDoListViewController: UITableViewController {
     
 
     
-    //MARK - Model Manipulation Methods
+    //MARK: - Model Manipulation Methods
     
     func saveItems() {
         
-        // Encode itemsArray after entering a new item or changing done property.
-        let encoder = PropertyListEncoder()
-        
         do {
-            let data = try encoder.encode(itemArray)
-            try data.write(to: dataFilePath!)
+            try context.save()
         } catch {
-            print("Error encoding itemArray, \(error)")
+            print("Error saving context, \(error)")
         }
         
         // This line reloads the table view to show newly appended item in itemArray.
         self.tableView.reloadData()
-        
     }
     
-    func loadItems() {
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {
         
-        if let data = try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            
-            do {
-                itemArray = try decoder.decode([Item].self, from: data)
-            } catch {
-                print("Error decoding itemArray, \(error)")
-            }
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES[cd] %@", selectedCategory!.name!)
+        request.predicate = predicate
+        
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+        } else {
+            request.predicate = categoryPredicate
         }
         
+        do {
+            itemArray = try context.fetch(request)
+        } catch {
+            print("Error fetching data from context \(error)")
+        }
+        
+        // This line reloads the table view to show newly appended item in itemArray.
+        self.tableView.reloadData()
     }
-    
 }
 
+
+
+// MARK: - Search Bar Methods
+
+extension ToDoListViewController: UISearchBarDelegate {
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        
+        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        request.predicate = predicate
+        
+        let sortDescriptor = NSSortDescriptor(key: "title", ascending: true)
+        request.sortDescriptors = [sortDescriptor]
+        
+        loadItems(with: request, predicate: predicate)
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            loadItems()
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+        }
+    }
+    
+    
+}
