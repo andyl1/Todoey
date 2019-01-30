@@ -7,92 +7,92 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class ToDoListViewController: UITableViewController {
     
+    let realm = try! Realm()
+    var toDoItems : Results<Item>?
     
-    var itemArray = [Item]()
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     var selectedCategory : Category? {
         didSet {
+            print("selectedCategory did set")
             loadItems()
         }
     }
-
     
     override func viewDidLoad() {
         super.viewDidLoad()
-                
-        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist"))
+        
+        print("view did load")
 
     }
     
     
 
-    //MARK: - Table View Datasource Methods (required)
+    //MARK: - TABLE VIEW DATA SOURCE METHODS (REQUIRED)
+    
+    
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        
+        return toDoItems?.count ?? 1
+    }
+    
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
         
-        let item = itemArray[indexPath.row]
-        cell.textLabel?.text = item.title
-        
-        // Prevent cell reuse from retaining the cell's previous accessoryType by matching to the property's 'done' value.
-        cell.accessoryType = (item.done) ? .checkmark : .none
+        if let item = toDoItems?[indexPath.row] {
+            cell.textLabel?.text = item.title
+            cell.accessoryType = item.done ? .checkmark : .none
+        } else {
+            cell.textLabel?.text = "No Items Added"
+        }
         
         return cell
     }
     
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        
-        return itemArray.count
-    }
     
     
+    //MARK: - TABLE VIEW DELEGATE METHODS
     
-    //MARK: - Table View Delegate Methods
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        // Toggling the item cell's 'done' property on selecting a cell.
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
-        
-        // Call saveItem to encode change made to 'done' property
-        saveItems()
-        
-        // To stop cell from staying grey after selecting a cell.
+        // To stop cell staying grey after selecting a cell.
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
     
     
-    //MARK: - Add New Items
+    //MARK: - ADD NEW ITEMS
+    
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
-        
+                
         var textField = UITextField()
         
-        // UIAlertView setup
+        // Instantiate alert view.
         let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
         
-        // UIAlertAction setup
+        // Instantiate alert action.
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             
-            // What will happen when the user clicks the 'Add Item' button
-            
-            // Create new item and set it's title from the text in textField
-            let newItem = Item(context: self.context)
-            newItem.title = textField.text!
-            newItem.done = false
-            newItem.parentCategory = self.selectedCategory
-            
-            // Append the new item to the itemArray, and save to UserDefaults plist.
-            self.itemArray.append(newItem)
-            
-            // Call saveItem to encode the new item entered for 'title' property.
-            self.saveItems()
+            // Updates the 'items' property of Category on pressing 'Add Item' button.
+            if let currentCategory = self.selectedCategory {
+                print(currentCategory)
+                do {
+                    try self.realm.write {
+                        let newItem = Item()
+                        newItem.title = textField.text!
+                        currentCategory.items.append(newItem)
+                    }
+                } catch {
+                    print("Error saving new items, \(error)")
+                }
+            }
+            self.tableView.reloadData()
         }
         
         alert.addTextField { (alertTextfield) in
@@ -107,39 +107,18 @@ class ToDoListViewController: UITableViewController {
     
 
     
-    //MARK: - Model Manipulation Methods
+    //MARK: - MODEL MANIPULATION METHODS
     
-    func saveItems() {
-        
-        do {
-            try context.save()
-        } catch {
-            print("Error saving context, \(error)")
-        }
-        
-        // This line reloads the table view to show newly appended item in itemArray.
-        self.tableView.reloadData()
-    }
     
-    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {
+    func loadItems() {
         
-        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES[cd] %@", selectedCategory!.name!)
-        request.predicate = predicate
+        print("loadtItems() method called")
+
+        toDoItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
         
-        if let additionalPredicate = predicate {
-            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
-        } else {
-            request.predicate = categoryPredicate
-        }
+        print(toDoItems!)
         
-        do {
-            itemArray = try context.fetch(request)
-        } catch {
-            print("Error fetching data from context \(error)")
-        }
-        
-        // This line reloads the table view to show newly appended item in itemArray.
-        self.tableView.reloadData()
+        tableView.reloadData()
     }
 }
 
@@ -147,29 +126,31 @@ class ToDoListViewController: UITableViewController {
 
 // MARK: - Search Bar Methods
 
-extension ToDoListViewController: UISearchBarDelegate {
-    
-    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        
-        let request : NSFetchRequest<Item> = Item.fetchRequest()
-        
-        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
-        request.predicate = predicate
-        
-        let sortDescriptor = NSSortDescriptor(key: "title", ascending: true)
-        request.sortDescriptors = [sortDescriptor]
-        
-        loadItems(with: request, predicate: predicate)
-    }
-    
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        if searchBar.text?.count == 0 {
-            loadItems()
-            DispatchQueue.main.async {
-                searchBar.resignFirstResponder()
-            }
-        }
-    }
-    
-    
-}
+
+//extension ToDoListViewController: UISearchBarDelegate {
+//
+//    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+//
+//        let request : NSFetchRequest<Item> = Item.fetchRequest()
+//
+//        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+//        request.predicate = predicate
+//
+//        let sortDescriptor = NSSortDescriptor(key: "title", ascending: true)
+//        request.sortDescriptors = [sortDescriptor]
+//
+//        loadItems(with: request, predicate: predicate)
+//    }
+//
+//
+//    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+//        if searchBar.text?.count == 0 {
+//            loadItems()
+//            DispatchQueue.main.async {
+//                searchBar.resignFirstResponder()
+//            }
+//        }
+//    }
+//
+//
+//}
