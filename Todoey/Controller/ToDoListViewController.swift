@@ -11,18 +11,23 @@ import RealmSwift
 
 class ToDoListViewController: UITableViewController {
     
+    // Initialise new Realm database access point.
     let realm = try! Realm()
+    
+    // Initialise new array of type Results to store Item objects.
     var toDoItems : Results<Item>?
     
+    // Initialise a new variable for prepareForSegue to pass over the Category name selected.
     var selectedCategory : Category? {
         didSet {
             loadItems()
         }
     }
     
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
     }
     
     
@@ -57,8 +62,22 @@ class ToDoListViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
+        // Toggle done/not done status and update Realm.
+        if let item = toDoItems?[indexPath.row] {
+            do {
+                try realm.write {
+//                    realm.delete(item)
+                    item.done = !item.done
+                }
+            } catch {
+                print("Error in saving done status, \(error)")
+            }
+        }
+        
         // To stop cell staying grey after selecting a cell.
         tableView.deselectRow(at: indexPath, animated: true)
+        
+        tableView.reloadData()
     }
     
     
@@ -76,14 +95,17 @@ class ToDoListViewController: UITableViewController {
         // Instantiate alert action.
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             
-            // Updates the 'items' property of Category on pressing 'Add Item' button.
+            // Updates the 'items' property of Category model when 'Add Item' is pressed.
+            // Adds an Item object to the Category List/Array.
+            // Do not need to use .save method as we are not creating a new object, just appending to existing Category.
             if let currentCategory = self.selectedCategory {
                 print(currentCategory)
                 do {
                     try self.realm.write {
                         let newItem = Item()
                         newItem.title = textField.text!
-                        currentCategory.items.append(newItem)   // Does this need .save?
+                        newItem.dateCreated = Date()
+                        currentCategory.items.append(newItem)   // Does this need .save, just append.
                     }
                 } catch {
                     print("Error saving new items, \(error)")
@@ -111,39 +133,32 @@ class ToDoListViewController: UITableViewController {
         
         toDoItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
         
-        print(toDoItems!)
-        
         tableView.reloadData()
     }
 }
 
 
 
-// MARK: - Search Bar Methods
+// MARK: - SEARCH BAR METHODS
 
 
-//extension ToDoListViewController: UISearchBarDelegate {
-//
-//    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-//
-//        let request : NSFetchRequest<Item> = Item.fetchRequest()
-//
-//        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
-//        request.predicate = predicate
-//
-//        let sortDescriptor = NSSortDescriptor(key: "title", ascending: true)
-//        request.sortDescriptors = [sortDescriptor]
-//
-//        loadItems(with: request, predicate: predicate)
-//    }
-//
-//
-//    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-//        if searchBar.text?.count == 0 {
-//            loadItems()
-//            DispatchQueue.main.async {
-//                searchBar.resignFirstResponder()
-//            }
-//        }
-//    }
-//}
+extension ToDoListViewController: UISearchBarDelegate {
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        
+        toDoItems = toDoItems?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "dateCreated", ascending: true)
+        
+        tableView.reloadData()
+    }
+
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            loadItems()
+            
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+        }
+    }
+}

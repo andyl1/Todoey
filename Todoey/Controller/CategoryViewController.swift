@@ -11,8 +11,13 @@ import RealmSwift
 
 class CategoryViewController: UITableViewController {
     
-    let realm = try! Realm()    
+    // Initialise new Realm database access point.
+    let realm = try! Realm()
+    
+    // Initialise new array of type Results to store Category objects.
     var categoryArray : Results<Category>?
+    
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
