@@ -16,7 +16,6 @@ class ToDoListViewController: UITableViewController {
     
     var selectedCategory : Category? {
         didSet {
-            print("selectedCategory did set")
             loadItems()
         }
     }
@@ -24,8 +23,6 @@ class ToDoListViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        print("view did load")
-
     }
     
     
@@ -86,7 +83,7 @@ class ToDoListViewController: UITableViewController {
                     try self.realm.write {
                         let newItem = Item()
                         newItem.title = textField.text!
-                        currentCategory.items.append(newItem)
+                        currentCategory.items.append(newItem)   // Does this need .save?
                     }
                 } catch {
                     print("Error saving new items, \(error)")
@@ -112,8 +109,6 @@ class ToDoListViewController: UITableViewController {
     
     func loadItems() {
         
-        print("loadtItems() method called")
-
         toDoItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
         
         print(toDoItems!)
@@ -151,6 +146,4 @@ class ToDoListViewController: UITableViewController {
 //            }
 //        }
 //    }
-//
-//
 //}

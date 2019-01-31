@@ -11,8 +11,8 @@ import RealmSwift
 
 class CategoryViewController: UITableViewController {
     
-    let realm = try! Realm()
-    var categoryArray: Results<Category>?
+    let realm = try! Realm()    
+    var categoryArray : Results<Category>?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -93,14 +93,14 @@ class CategoryViewController: UITableViewController {
         }
         
         // This line reloads the table view to show newly appended item in itemArray.
-        self.tableView.reloadData()
+        tableView.reloadData()
     }
     
     func loadCategories() {
         
         categoryArray = realm.objects(Category.self)
         
-        self.tableView.reloadData()
+        tableView.reloadData()
     }
     
     
@@ -110,15 +110,15 @@ class CategoryViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        // To stop cell from staying grey after selecting a cell.
-        tableView.deselectRow(at: indexPath, animated: true)
-        
         performSegue(withIdentifier: "goToItems", sender: self)
+        
+        // To stop cell from staying grey after selecting a cell.
+        tableView.deselectRow(at: indexPath, animated: false)
     }
     
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
+                
         // Creates a constant of type destination view controller.
         let destinationVC = segue.destination as! ToDoListViewController
         
